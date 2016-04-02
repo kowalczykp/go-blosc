@@ -24,11 +24,11 @@ const (
 )
 
 func NewWriter(w io.Writer, size uintptr) *Writer {
-	C.blosc_init()
 	return NewLevelWriter(w, 5, Shuffle, size)
 }
 
 func NewLevelWriter(w io.Writer, level int, s shuffle, size uintptr) *Writer {
+	C.blosc_init()
 	return &Writer{w: w, level: level, size: size, s: s}
 }
 
@@ -37,6 +37,16 @@ type Writer struct {
 	level int
 	size  uintptr
 	s     shuffle
+}
+
+func (w *Writer) SetMultithreading(n int) {
+	C.blosc_set_nthreads(C.int(n))
+}
+
+func (w *Writer) SetCompressor(compressor string) {
+	cCompressor := C.CString(compressor)
+	C.blosc_set_compressor(cCompressor)
+	C.free(unsafe.Pointer(cCompressor))
 }
 
 func (w *Writer) Close() error {

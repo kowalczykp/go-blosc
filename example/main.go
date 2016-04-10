@@ -11,12 +11,7 @@ import (
 
 func main() {
 	input := new(bytes.Buffer)
-	output := new(bytes.Buffer)
-
 	data := make([]float32, 100*100*100)
-
-	bw := blosc.NewWriter(output, unsafe.Sizeof(data[0]))
-	defer bw.Close()
 
 	// Generate hard to compress data
 	for c := range data {
@@ -31,11 +26,28 @@ func main() {
 		}
 	}
 
-	written, err := bw.Write(input.Bytes())
+	originalSize := len(input.Bytes())
+
+	// Compression
+	enc := blosc.NewEncoder()
+	compressed, err := enc.Encode(unsafe.Sizeof(data[0]), input.Bytes(), nil)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Printf("Compression: %d -> %d (%.1fx)\n", len(data), written, float32(len(data))/float32(written))
+	compressedSize := len(compressed)
+	ratio := float32(originalSize) / float32(compressedSize)
+	fmt.Printf("Original size: %d after compression: %d Ratio: %f\n", originalSize, compressedSize, ratio)
+
+	// Decompression
+	dec := blosc.NewDecoder()
+	decompressed, err := dec.Decode(compressed, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Original==Decompressed:", bytes.Compare(decompressed, input.Bytes()) == 0)
+
 }
